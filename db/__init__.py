@@ -7,3 +7,8 @@ SQLALCHEMY_DB_URL = f"postgresql+asyncpg://{config.DB_USERNAME}:{config.DB_PASSW
 engine = create_async_engine(SQLALCHEMY_DB_URL)
 
 async_session = async_sessionmaker(bind=engine, expire_on_commit=False)
+
+
+async def get_async_session():
+    async with async_session() as session:
+        yield session
