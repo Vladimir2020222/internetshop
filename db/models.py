@@ -26,7 +26,7 @@ class User(Base):
     email: Mapped[str | None] = mapped_column(String(320), unique=True)  # 320 is standardised max email length
     password_hash: Mapped[str]
     cart_uuid: Mapped[UUID] = mapped_column(
-        ForeignKey('carts.uuid', name='users_cart_uuid_fkey', ondelete='RESTRICT')
+        ForeignKey('carts.uuid', name='users_cart_uuid_fkey', ondelete='RESTRICT'), unique=True
     )
     role: Mapped[UserRole] = mapped_column(sqlalchemy.Enum(UserRole), server_default=text("'customer'"))
 
