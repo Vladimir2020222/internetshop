@@ -1,17 +1,17 @@
 import datetime
-import time
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, Form, Query, Body
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from accounts.db import get_user_by_uuid, user_with_email_exists, create_user
+from accounts.db import get_user_by_uuid, user_with_email_exists, create_user, update_user_email
 from accounts.utils import authenticate, hash_password
 from db import get_async_session
 from mail import send_email
-from utils import encode_jwt
+from utils import encode_jwt, decode_jwt
 
 router = APIRouter(prefix='/accounts')
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/accounts/login')
@@ -44,3 +44,15 @@ async def signup(
     url = confirm_email_url.replace('$TOKEN$', token)
     send_email.delay(email, f'someone asked for confirming email in internetshop. If it weren\'t'
                             f'you, ignore this message. To confirm, follow this link: {url}')
+
+
+async def confirm_email(
+        token: Annotated[str, Body(embed=True)],
+        db_session: Annotated[AsyncSession, Depends(get_async_session)]
+):
+    payload = decode_jwt(token, ['user_uuid', 'email'])
+    if payload is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Invalid token')
+    email = payload['email']
+    user_uuid = UUID(payload['user_uuid'])
+    await update_user_email(db_session, user_uuid, email)
