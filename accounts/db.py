@@ -39,3 +39,13 @@ async def update_user_email(session: AsyncSession, user_uuid: UUID, email: str) 
 async def update_user_full_name(session: AsyncSession, user_uuid: UUID, full_name: str) -> None:
     await session.execute(update(User).where(User.uuid == user_uuid).values({'full_name': full_name}))
     await session.commit()
+
+
+async def update_user_password(session: AsyncSession, user_uuid: UUID, password_hash: str) -> None:
+    await session.execute(update(User).where(User.uuid == user_uuid).values({'password_hash': password_hash}))
+    await session.commit()
+
+
+async def update_user_password_by_email(session: AsyncSession, email: str, password_hash: str) -> None:
+    await session.execute(update(User).where(User.email == email).values({'password_hash': password_hash}))
+    await session.commit()
