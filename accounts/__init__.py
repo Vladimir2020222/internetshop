@@ -29,6 +29,7 @@ async def login(
     return {'token_type': 'bearer', 'access_token': token}
 
 
+@router.post('/signup')
 async def signup(
         full_name: Annotated[str, Form()],
         email: Annotated[str, Form()],
@@ -46,6 +47,7 @@ async def signup(
                             f'you, ignore this message. To confirm, follow this link: {url}')
 
 
+@router.post('/confirm_email')
 async def confirm_email(
         token: Annotated[str, Body(embed=True)],
         db_session: Annotated[AsyncSession, Depends(get_async_session)]
