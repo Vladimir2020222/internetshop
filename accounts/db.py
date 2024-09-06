@@ -27,8 +27,10 @@ async def create_user(session: AsyncSession, full_name: str, password_hash: str)
         'password_hash': password_hash,
         'cart_uuid': select(cart_cte.c.uuid).scalar_subquery()
     }).returning(User.uuid))
+    await session.commit()
     return res.scalar()
 
 
 async def update_user_email(session: AsyncSession, user_uuid: UUID, email: str) -> None:
     await session.execute(update(User).where(User.uuid == user_uuid).values({'email': email}))
+    await session.commit()

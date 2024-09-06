@@ -3,18 +3,20 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Form, Query, Body
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from accounts.db import get_user_by_uuid, user_with_email_exists, create_user, update_user_email
+from accounts.dependencies import get_current_user_or_401
+from accounts.models import UserDTO
 from accounts.utils import authenticate, hash_password
 from db import get_async_session
+from db.models import User
 from mail import send_email
 from utils import encode_jwt, decode_jwt
 
 router = APIRouter(prefix='/accounts')
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/accounts/login')
 
 
 @router.post('/login')
@@ -58,3 +60,10 @@ async def confirm_email(
     email = payload['email']
     user_uuid = UUID(payload['user_uuid'])
     await update_user_email(db_session, user_uuid, email)
+
+
+@router.get('/profile', response_model=UserDTO)
+async def get_profile(
+        current_user: Annotated[User, Depends(get_current_user_or_401)]
+):
+    return current_user

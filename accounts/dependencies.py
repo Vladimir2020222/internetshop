@@ -2,13 +2,17 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from accounts import get_user_by_uuid, oauth2_scheme
+from accounts import get_user_by_uuid
 from db import get_async_session
 from db.models import User
 from utils import decode_jwt
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/accounts/login')
 
 
 def get_current_user_uuid(token: Annotated[str, Depends(oauth2_scheme)]) -> UUID | None:
