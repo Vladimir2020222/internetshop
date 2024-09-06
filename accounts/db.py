@@ -34,3 +34,8 @@ async def create_user(session: AsyncSession, full_name: str, password_hash: str)
 async def update_user_email(session: AsyncSession, user_uuid: UUID, email: str) -> None:
     await session.execute(update(User).where(User.uuid == user_uuid).values({'email': email}))
     await session.commit()
+
+
+async def update_user_full_name(session: AsyncSession, user_uuid: UUID, full_name: str) -> None:
+    await session.execute(update(User).where(User.uuid == user_uuid).values({'full_name': full_name}))
+    await session.commit()

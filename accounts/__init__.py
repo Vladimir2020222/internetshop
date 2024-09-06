@@ -7,13 +7,12 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
-from accounts.db import get_user_by_uuid, user_with_email_exists, create_user, update_user_email
-from accounts.dependencies import get_current_user_or_401
+from accounts.db import get_user_by_uuid, user_with_email_exists, create_user, update_user_email, update_user_full_name
+from accounts.dependencies import get_current_user_or_401, get_current_user_uuid_or_401
 from accounts.models import UserDTO
-from accounts.utils import authenticate, hash_password
+from accounts.utils import authenticate, hash_password, send_confirm_email, pre_send_confirm_email_check
 from db import get_async_session
 from db.models import User
-from mail import send_email
 from utils import encode_jwt, decode_jwt
 
 router = APIRouter(prefix='/accounts')
@@ -39,14 +38,10 @@ async def signup(
         confirm_email_url: Annotated[str, Query()],
         db_session: Annotated[AsyncSession, Depends(get_async_session)]
 ):
-    if await user_with_email_exists(db_session, email):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User with such email already exists')
+    await pre_send_confirm_email_check(db_session, confirm_email_url, email)
     password_hash = await hash_password(password)
     user_uuid = await create_user(db_session, full_name, password_hash)
-    token = encode_jwt({'user_uuid': user_uuid.hex, 'email': email}, 60 * 60 * 2)
-    url = confirm_email_url.replace('$TOKEN$', token)
-    send_email.delay(email, f'someone asked for confirming email in internetshop. If it weren\'t'
-                            f'you, ignore this message. To confirm, follow this link: {url}')
+    send_confirm_email(confirm_email_url, user_uuid, email)
 
 
 @router.post('/confirm_email')
@@ -63,7 +58,25 @@ async def confirm_email(
 
 
 @router.get('/profile', response_model=UserDTO)
-async def get_profile(
-        current_user: Annotated[User, Depends(get_current_user_or_401)]
+async def get_profile(user: Annotated[User, Depends(get_current_user_or_401)]):
+    return user
+
+
+@router.patch('/profile/update')
+async def update_profile(
+        user_uuid: Annotated[UUID, Depends(get_current_user_uuid_or_401)],
+        db_session: Annotated[AsyncSession, Depends(get_async_session)],
+        confirm_email_url: Annotated[str | None, Query()] = None,
+        full_name: Annotated[str | None, Body()] = None,
+        email: Annotated[str | None, Body()] = None
 ):
-    return current_user
+    if email:
+        if confirm_email_url is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail='email is provided, but confirm_email_url is not'
+            )
+        await pre_send_confirm_email_check(db_session, confirm_email_url, email)
+        send_confirm_email(confirm_email_url, user_uuid, email)
+    if full_name:
+        await update_user_full_name(db_session, user_uuid, full_name)
