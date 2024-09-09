@@ -1,7 +1,9 @@
+import datetime
 import enum
 from uuid import UUID
 
 import sqlalchemy
+from geoalchemy2 import Geometry
 from sqlalchemy import text, String, ForeignKey, Integer, JSON, Table, Column, UniqueConstraint
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -30,6 +32,20 @@ class User(Base):
         ForeignKey('carts.uuid', name='users_cart_uuid_fkey', ondelete='RESTRICT'), unique=True
     )
     role: Mapped[UserRole] = mapped_column(sqlalchemy.Enum(UserRole), server_default=text("'customer'"))
+    warehouse_uuid: Mapped[UUID | None] = mapped_column(
+        ForeignKey('warehouses.uuid', name='users_warehouse_uuid_fkey', ondelete='RESTRICT'),
+        sqlalchemy.CheckConstraint(
+            "(role = 'warehouse_worker') = (warehouse_uuid IS NOT NULL)",
+            name='check_warehouse_uuid_with_role'
+        )
+    )
+    delivery_car_uuid: Mapped[UUID | None] = mapped_column(
+        ForeignKey('delivery_cars.uuid', name='users_delivery_car_uuid_fkey', ondelete='RESTRICT'),
+        sqlalchemy.CheckConstraint(
+            "(role = 'courier') = (delivery_car_uuid IS NOT NULL)",
+            name='check_delivery_car_uuid_with_role'
+        )
+    )
 
 
 class Cart(Base):
@@ -47,7 +63,42 @@ product_cart_association_table = Table(
     Column('cart_uuid', ForeignKey(
         'carts.uuid', ondelete='CASCADE', name='product_cart_cart_product_uuid_fkey'
     ), primary_key=True),
-    Column('amount', Integer, nullable=False)
+    Column('amount', Integer, nullable=False),
+    sqlalchemy.CheckConstraint('amount >= 0', name='check_product_cart_amount_positive')
+)
+
+
+product_order_association_table = Table(
+    'product_order',
+    Base.metadata,
+    Column('product_uuid', ForeignKey(
+        'products.uuid',
+        ondelete='RESTRICT',
+        name='product_order_product_uuid_fkey'), primary_key=True),
+    Column('order_uuid', ForeignKey(
+        'orders.uuid',
+        ondelete='CASCADE',
+        name='product_order_order_uuid_fkey'), primary_key=True),
+    Column('amount', Integer(), nullable=False),
+    sqlalchemy.CheckConstraint('amount >= 0', name='check_product_order_amount_positive')
+)
+
+
+product_warehouse_association_table = Table(
+    'product_warehouse',
+    Base.metadata,
+    Column(
+        'product_uuid',
+        ForeignKey('products.uuid', name='product_warehouse_product_uuid_fkey', ondelete='CASCADE'),
+        primary_key=True
+    ),
+    Column(
+        'warehouse_uuid',
+        ForeignKey('warehouses.uuid', name='product_warehouse_warehouse_uuid_fkey', ondelete='CASCADE'),
+        primary_key=True
+    ),
+    Column('amount', Integer(), nullable=False),
+    sqlalchemy.CheckConstraint('amount >= 0', name='check_product_warehouse_amount_positive')
 )
 
 
@@ -122,3 +173,47 @@ class ReviewImage(Base):
         name='reviews_images_review_uuid_fkey'
     ))
     path: Mapped[str]
+
+
+class OrderStatus(enum.Enum):
+    collecting = 'collecting'
+    delivering = 'delivering'
+    done = 'done'
+    canceled = 'canceled'
+    returning = 'returning'
+    returned = 'returned'
+
+
+class Order(Base):
+    __tablename__ = 'orders'
+
+    uuid: Mapped[UUID] = mapped_column(primary_key=True, server_default=text('gen_random_uuid()'))
+    user_uuid: Mapped[UUID] = mapped_column(
+        ForeignKey('users.uuid', ondelete='RESTRICT', name='orders_user_uuid_fkey')
+    )
+    status: Mapped[OrderStatus] = mapped_column(sqlalchemy.Enum(OrderStatus))
+    # after order is created, price of products might change, but it should not affect price of order. That is why we
+    # can't calculate its price based on price of products that is currently in db.
+    price: Mapped[int]
+    created_at: Mapped[datetime.datetime] = mapped_column(server_default=text('NOW()'))
+    deliver_address: Mapped[Geometry] = mapped_column(Geometry(geometry_type='POINT', srid=4326))
+    charge_id: Mapped[str] = mapped_column(String(length=100))
+    warehouse_uuid: Mapped[UUID] = mapped_column(
+        ForeignKey('warehouses.uuid', name='orders_warehouse_uuid_fkey', ondelete='RESTRICT')
+    )
+    delivery_car_uuid: Mapped[UUID | None] = mapped_column(
+        ForeignKey('delivery_cars.uuid', name='orders_delivery_car_uuid_fkey', ondelete='RESTRICT')
+    )
+
+
+class Warehouse(Base):
+    __tablename__ = 'warehouses'
+
+    uuid: Mapped[UUID] = mapped_column(primary_key=True, server_default=text('gen_random_uuid()'))
+    address: Mapped[Geometry] = mapped_column(Geometry(geometry_type='POINT', srid=4326))
+
+
+class DeliveryCar(Base):
+    __tablename__ = 'delivery_cars'
+
+    uuid: Mapped[UUID] = mapped_column(primary_key=True, server_default=text('gen_random_uuid()'))
