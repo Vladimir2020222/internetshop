@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select, insert, delete
+from sqlalchemy import select, insert, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import product_user_association_table, Product
@@ -28,4 +28,13 @@ async def remove_product_from_cart(session: AsyncSession, product_uuid: UUID, us
         product_user_association_table.c.product_uuid == product_uuid,
         product_user_association_table.c.user_uuid == user_uuid
     ))
+    await session.commit()
+
+
+async def change_amount(session: AsyncSession, product_uuid: UUID, user_uuid: UUID, new_amount: int) -> None:
+    statement = update(product_user_association_table) \
+        .where(product_user_association_table.c.product_uuid == product_uuid,
+               product_user_association_table.c.user_uuid == user_uuid) \
+        .values({'amount': new_amount})
+    await session.execute(statement)
     await session.commit()

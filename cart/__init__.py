@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import cart.db
 from accounts import get_current_user_uuid_or_401
-from cart.db import get_user_products
+from cart.db import get_user_products, change_amount
 from db import get_async_session
 from db.models import Product
 
@@ -38,3 +38,13 @@ async def remove_product_from_cart(
         db_session: Annotated[AsyncSession, Depends(get_async_session)]
 ):
     await cart.db.remove_product_from_cart(db_session, product_uuid, user_uuid)
+
+
+@router.post('/change_amount')
+async def change_products_amount_in_cart(
+        user_uuid: Annotated[UUID, Depends(get_current_user_uuid_or_401)],
+        product_uuid: Annotated[UUID, Body()],
+        amount: Annotated[int, Body()],
+        db_session: Annotated[AsyncSession, Depends(get_async_session)]
+):
+    await change_amount(db_session, product_uuid, user_uuid, amount)
