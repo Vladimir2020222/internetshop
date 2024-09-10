@@ -41,7 +41,7 @@ class User(Base):
         sqlalchemy.CheckConstraint(
             "(role = 'courier') = (delivery_car_uuid IS NOT NULL)",
             name='check_delivery_car_uuid_with_role'
-        )
+        ), unique=True
     )
 
 
