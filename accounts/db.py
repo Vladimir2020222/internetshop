@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import select, insert, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.models import User, Cart
+from db.models import User
 
 
 async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
@@ -21,11 +21,9 @@ async def get_user_by_uuid(session: AsyncSession, uuid: UUID) -> User | None:
 
 
 async def create_user(session: AsyncSession, full_name: str, password_hash: str) -> UUID:
-    cart_cte = insert(Cart).returning(Cart.uuid).cte()
     res = await session.execute(insert(User).values({
         'full_name': full_name,
         'password_hash': password_hash,
-        'cart_uuid': select(cart_cte.c.uuid).scalar_subquery()
     }).returning(User.uuid))
     await session.commit()
     return res.scalar()

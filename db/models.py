@@ -28,9 +28,6 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(120))
     email: Mapped[str | None] = mapped_column(String(320), unique=True)  # 320 is standardised max email length
     password_hash: Mapped[str]
-    cart_uuid: Mapped[UUID] = mapped_column(
-        ForeignKey('carts.uuid', name='users_cart_uuid_fkey', ondelete='RESTRICT'), unique=True
-    )
     role: Mapped[UserRole] = mapped_column(sqlalchemy.Enum(UserRole), server_default=text("'customer'"))
     warehouse_uuid: Mapped[UUID | None] = mapped_column(
         ForeignKey('warehouses.uuid', name='users_warehouse_uuid_fkey', ondelete='RESTRICT'),
@@ -48,23 +45,17 @@ class User(Base):
     )
 
 
-class Cart(Base):
-    __tablename__ = 'carts'
-
-    uuid: Mapped[UUID] = mapped_column(primary_key=True, server_default=text('gen_random_uuid()'))
-
-
-product_cart_association_table = Table(
-    'product_cart',
+product_user_association_table = Table(
+    'product_user',
     Base.metadata,
     Column('product_uuid', ForeignKey(
-        'products.uuid', ondelete='CASCADE', name='product_cart_product_uuid_fkey'
+        'products.uuid', ondelete='CASCADE', name='product_user_product_uuid_fkey'
     ), primary_key=True),
-    Column('cart_uuid', ForeignKey(
-        'carts.uuid', ondelete='CASCADE', name='product_cart_cart_product_uuid_fkey'
+    Column('user_uuid', ForeignKey(
+        'users.uuid', ondelete='CASCADE', name='product_user_user_uuid_fkey'
     ), primary_key=True),
     Column('amount', Integer, nullable=False),
-    sqlalchemy.CheckConstraint('amount >= 0', name='check_product_cart_amount_positive')
+    sqlalchemy.CheckConstraint('amount >= 0', name='check_product_user_amount_positive')
 )
 
 
