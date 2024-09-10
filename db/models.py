@@ -120,7 +120,7 @@ class Product(Base):
 
     uuid: Mapped[UUID] = mapped_column(primary_key=True, server_default=text('gen_random_uuid()'))
     price: Mapped[int] = mapped_column(
-        Integer, sqlalchemy.CheckConstraint('price > 0'), name='price_positive'
+        Integer, sqlalchemy.CheckConstraint('price > 0', name='price_positive')
     )
     title: Mapped[str] = mapped_column(String(length=300))
     description: Mapped[str] = mapped_column(String(length=5000))

@@ -1,8 +1,8 @@
 """User, Product, Review, ReviewImage, Order, Warehouse and DeliveryCar models created
 
-Revision ID: 4c5b0c8f4743
+Revision ID: ffcb2672128f
 Revises: 
-Create Date: 2024-09-10 15:19:33.793231
+Create Date: 2024-09-10 18:22:20.740308
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '4c5b0c8f4743'
+revision: str = 'ffcb2672128f'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -39,7 +39,7 @@ def upgrade() -> None:
     )
     op.create_table('products',
     sa.Column('uuid', sa.Uuid(), server_default=sa.text('gen_random_uuid()'), nullable=False),
-    sa.Column('price_positive', sa.Integer(), nullable=False),
+    sa.Column('price', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(length=300), nullable=False),
     sa.Column('description', sa.String(length=5000), nullable=False),
     sa.Column('characteristics', sa.JSON(), nullable=True),
@@ -146,6 +146,6 @@ def downgrade() -> None:
     op.drop_table('warehouses')
     op.drop_table('product_types')
     op.drop_table('delivery_cars')
-    op.execute('DROP TYPE userrole')
     op.execute('DROP TYPE orderstatus')
+    op.execute('DROP TYPE userrole')
     # ### end Alembic commands ###
